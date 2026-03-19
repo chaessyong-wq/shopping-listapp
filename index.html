@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>오늘의 쇼핑 리스트</title>
+    <title>오늘의 쇼핑 리스트 (Supabase)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase JS SDK CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap');
         body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; }
@@ -57,14 +59,33 @@
     </div>
 
     <script>
-        // 초기화
-        let items = JSON.parse(localStorage.getItem('shopping-items')) || [];
+        // Supabase 초기화
+        const SUPABASE_URL = 'https://xhwndjapprqdqoigfkwm.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhod25kamFwcHJxZHFvaWdma3dtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4ODYwNDEsImV4cCI6MjA4OTQ2MjA0MX0.u0PO0dk7777zKvl0KfNaIRaeWtDqGhSb56G1a5K11xA';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let items = [];
 
         const form = document.getElementById('add-form');
         const input = document.getElementById('item-input');
         const listContainer = document.getElementById('shopping-list');
         const emptyState = document.getElementById('empty-state');
         const itemCount = document.getElementById('item-count');
+
+        // 데이터 가져오기
+        async function fetchItems() {
+            const { data, error } = await supabase
+                .from('shopping_items')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error fetching items:', error);
+                return;
+            }
+            items = data;
+            render();
+        }
 
         // 리스트 그리기
         function render() {
@@ -74,16 +95,16 @@
                 emptyState.classList.remove('hidden');
             } else {
                 emptyState.classList.add('hidden');
-                items.forEach((item, index) => {
+                items.forEach((item) => {
                     const li = document.createElement('li');
                     li.className = `flex items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-xl group hover:shadow-md transition-all animate-in slide-in-from-bottom-2 duration-300`;
                     
                     li.innerHTML = `
-                        <button onclick="toggleCheck(${index})" class="flex-shrink-0 w-6 h-6 rounded-full border-2 border-blue-500 flex items-center justify-center ${item.checked ? 'bg-blue-500' : 'bg-transparent'}">
+                        <button onclick="toggleCheck('${item.id}', ${item.checked})" class="flex-shrink-0 w-6 h-6 rounded-full border-2 border-blue-500 flex items-center justify-center ${item.checked ? 'bg-blue-500' : 'bg-transparent'}">
                             ${item.checked ? '<i data-lucide="check" class="w-4 h-4 text-white"></i>' : ''}
                         </button>
                         <span class="flex-1 text-slate-700 font-medium ${item.checked ? 'item-checked' : ''}">${item.text}</span>
-                        <button onclick="removeItem(${index})" class="text-slate-300 hover:text-red-500 transition-colors">
+                        <button onclick="removeItem('${item.id}')" class="text-slate-300 hover:text-red-500 transition-colors">
                             <i data-lucide="trash-2" class="w-5 h-5"></i>
                         </button>
                     `;
@@ -93,30 +114,52 @@
 
             updateCount();
             lucide.createIcons();
-            localStorage.setItem('shopping-items', JSON.stringify(items));
         }
 
         // 아이템 추가
-        form.addEventListener('submit', (e) => {
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const text = input.value.trim();
             if (text) {
-                items.unshift({ text, checked: false });
-                input.value = '';
-                render();
+                const { error } = await supabase
+                    .from('shopping_items')
+                    .insert([{ text, checked: false }]);
+                
+                if (error) {
+                    console.error('Error adding item:', error);
+                } else {
+                    input.value = '';
+                    fetchItems();
+                }
             }
         });
 
         // 체크 토글
-        window.toggleCheck = (index) => {
-            items[index].checked = !items[index].checked;
-            render();
+        window.toggleCheck = async (id, currentStatus) => {
+            const { error } = await supabase
+                .from('shopping_items')
+                .update({ checked: !currentStatus })
+                .eq('id', id);
+            
+            if (error) {
+                console.error('Error updating item:', error);
+            } else {
+                fetchItems();
+            }
         };
 
         // 아이템 삭제
-        window.removeItem = (index) => {
-            items.splice(index, 1);
-            render();
+        window.removeItem = async (id) => {
+            const { error } = await supabase
+                .from('shopping_items')
+                .delete()
+                .eq('id', id);
+            
+            if (error) {
+                console.error('Error deleting item:', error);
+            } else {
+                fetchItems();
+            }
         };
 
         // 남은 개수 업데이트
@@ -125,8 +168,8 @@
             itemCount.textContent = activeCount;
         }
 
-        // 초기 렌더링
-        render();
+        // 초기 데이터 로드
+        fetchItems();
     </script>
 </body>
 </html>
