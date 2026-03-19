@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오늘의 쇼핑 리스트</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap');
+        body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; }
+        .item-checked { text-decoration: line-through; color: #94a3b8; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div class="p-6 bg-blue-600 text-white flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center gap-2">
+                    <i data-lucide="shopping-cart" class="w-6 h-6"></i>
+                    쇼핑 리스트
+                </h1>
+                <p class="text-blue-100 text-sm mt-1">사야 할 것들을 잊지 마세요!</p>
+            </div>
+            <div id="stats" class="text-right">
+                <span class="text-2xl font-bold" id="item-count">0</span>
+                <span class="text-sm opacity-80">개 남음</span>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <form id="add-form" class="flex gap-2 mb-6">
+                <input type="text" id="item-input" 
+                    placeholder="아이템을 입력하세요..." 
+                    class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    required>
+                <button type="submit" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl shadow-lg transition-transform active:scale-95">
+                    <i data-lucide="plus" class="w-6 h-6"></i>
+                </button>
+            </form>
+
+            <ul id="shopping-list" class="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                <!-- 리스트 아이템들이 여기에 추가됩니다 -->
+            </ul>
+
+            <div id="empty-state" class="hidden text-center py-10">
+                <div class="bg-slate-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 text-slate-300">
+                    <i data-lucide="check-circle-2" class="w-8 h-8"></i>
+                </div>
+                <p class="text-slate-500">리스트가 비어 있습니다.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 초기화
+        let items = JSON.parse(localStorage.getItem('shopping-items')) || [];
+
+        const form = document.getElementById('add-form');
+        const input = document.getElementById('item-input');
+        const listContainer = document.getElementById('shopping-list');
+        const emptyState = document.getElementById('empty-state');
+        const itemCount = document.getElementById('item-count');
+
+        // 리스트 그리기
+        function render() {
+            listContainer.innerHTML = '';
+            
+            if (items.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                items.forEach((item, index) => {
+                    const li = document.createElement('li');
+                    li.className = `flex items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-xl group hover:shadow-md transition-all animate-in slide-in-from-bottom-2 duration-300`;
+                    
+                    li.innerHTML = `
+                        <button onclick="toggleCheck(${index})" class="flex-shrink-0 w-6 h-6 rounded-full border-2 border-blue-500 flex items-center justify-center ${item.checked ? 'bg-blue-500' : 'bg-transparent'}">
+                            ${item.checked ? '<i data-lucide="check" class="w-4 h-4 text-white"></i>' : ''}
+                        </button>
+                        <span class="flex-1 text-slate-700 font-medium ${item.checked ? 'item-checked' : ''}">${item.text}</span>
+                        <button onclick="removeItem(${index})" class="text-slate-300 hover:text-red-500 transition-colors">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    `;
+                    listContainer.appendChild(li);
+                });
+            }
+
+            updateCount();
+            lucide.createIcons();
+            localStorage.setItem('shopping-items', JSON.stringify(items));
+        }
+
+        // 아이템 추가
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = input.value.trim();
+            if (text) {
+                items.unshift({ text, checked: false });
+                input.value = '';
+                render();
+            }
+        });
+
+        // 체크 토글
+        window.toggleCheck = (index) => {
+            items[index].checked = !items[index].checked;
+            render();
+        };
+
+        // 아이템 삭제
+        window.removeItem = (index) => {
+            items.splice(index, 1);
+            render();
+        };
+
+        // 남은 개수 업데이트
+        function updateCount() {
+            const activeCount = items.filter(i => !i.checked).length;
+            itemCount.textContent = activeCount;
+        }
+
+        // 초기 렌더링
+        render();
+    </script>
+</body>
+</html>
